@@ -62,6 +62,13 @@ autoConnectMicrobit();
 }
 
 function draw() {
+  // Added for Radio
+  if (!isShowActive) {
+  background(0);
+  drawHUD();
+  return;
+}
+
   handleButtonEvents(); //kontrollera om någon knapp har tryckts sen förra framen
   let activePalette = palettes[currentPaletteIndex]; //hämta inställningarna för nuvarande aktiva färgpalett
   
@@ -149,34 +156,42 @@ function draw() {
 function drawHUD() {
   push(); // spara aktuell stil och canvas inställning
   let activePalette = palettes[currentPaletteIndex];
+  let p = activePalette.primary;
 
   textFont('sans-serif');
-  
-  // Visa anslutningsstatus i övre vänstra hörnet
+  fill(p[0], p[1], p[2], 220); // En färg för all text
+
+  // Anslutningsstatus i övre vänstra hörnet
   textAlign(LEFT, TOP);
   textSize(14);
   if (isConnected) {
-    fill(0, 255, 120, 200);
-    text("● MICRO:BIT RADIO CONNECTED", 30, 30);
+    text("● TRANSMITTER CONNECTED (USB)", 30, 30);
   } else {
-    fill(255, 60, 60, 220);
-    text("○ NOT CONNECTED — CLICK CANVAS TO PAIR MICRO:BIT", 30, 30);
+    text("○ NOT CONNECTED — CLICK CANVAS TO PAIR TRANSMITTER", 30, 30);
   }
 
-  // Visa kontrollinstruktioner i nedre högra hörnet
+  // Kontrollinstruktioner i nedre högra hörnet
   textAlign(RIGHT, BOTTOM);
   textSize(15);
-  fill(255, 255, 255, 180);
-  text("MICRO:BIT CONTROLS", width - 30, height - 75);
-  
-  textSize(13);
-  fill(activePalette.primary[0], activePalette.primary[1], activePalette.primary[2], 220);
-  text("Button A: Reset Particles  |  Button B: Switch Palette  |  Hold A+B: DROP / GLITCH MODE", width - 30, height - 50);
+  text("CONTROLS", width - 30, height - 135);
 
-  // Indikator för nuvarnade palett 
-  fill(200, 200, 200, 150);
+  textSize(13);
+  text("TRANSMITTER (USB)", width - 30, height - 110);
+  text("Button A: Start show  |  Button B: Stop show", width - 30, height - 90);
+  text("WAND (BATTERY)", width - 30, height - 70);
+  text("Tilt: Move particles  |  Button A: Reset Particles", width - 30, height - 50);
+  text("Button B: Switch Palette  |  Hold A+B: DROP / GLITCH MODE", width - 30, height - 30);
+
+  // Indikator för nuvarande palett
   textSize(12);
-  text("PALETTE: " + activePalette.name.toUpperCase(), width - 30, height - 30);
+  text("PALETTE: " + activePalette.name.toUpperCase(), width - 30, height - 10);
+
+  // Väntläge-text i mitten
+  if (!isShowActive) {
+    textAlign(CENTER, CENTER);
+    textSize(20);
+    text("PRESS A ON TRANSMITTER TO START", width / 2, height / 2);
+  }
 
   pop(); // Återställer tidigare stilinstlällningar
 }
@@ -220,7 +235,8 @@ function drawJoystick(cx, cy, maxRadius) {
   translate(cx, cy); // flytta kodrinatsystemets origo till joystickens centrum
   
   // Rita yttre cirkelgräns för joysticken
-  stroke(255, 255, 255, 80);
+  let p = palettes[currentPaletteIndex].primary;
+  stroke(p[0], p[1], p[2], 200);
   strokeWeight(2);
   noFill();
   ellipse(0, 0, maxRadius * 2);
@@ -244,7 +260,7 @@ function drawJoystick(cx, cy, maxRadius) {
   noStroke();
   fill(255, 0, 0);
   ellipse(stick.x, stick.y, 20);
-
+  
   pop();
 }
 
@@ -304,6 +320,9 @@ async function readLoop(port) {
 
     // Gå igenom alla fullständiga mottagna rader
     for (let line of lines) {
+      let msg = trim(line);
+      if (msg === "START") { isShowActive = true; continue; }
+      if (msg === "STOP") { isShowActive = false; continue; }
       let parts = split(trim(line), ','); // Dela upp raden vid kommatecken (förväntat format: X,Y,Knapp)
       if (parts.length === 3) {
         // Omvandla textvärdena till tal och uppdatera globala variabler
